@@ -1,0 +1,55 @@
+name: Build ESP32 firmware
+on:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: Board name (dir under main/boards)
+        required: true
+        default: lichuang-dev
+        type: string
+      target:
+        description: IDF target chip
+        required: true
+        default: esp32s3
+        type: choice
+        options: [esp32s3, esp32c3, esp32c6]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # 铁律：action 一律钉 SHA
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build in official IDF image
+        run: |
+          docker run --rm -v "$PWD:/project" -w /project \
+            espressif/idf:v5.5.2 bash -c '
+              set -e
+              . $IDF_PATH/export.sh
+              idf.py -DBOARD=${{ github.event.inputs.board || "lichuang-dev" }} \
+                     -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.${{ github.event.inputs.target || "esp32s3" }}" \
+                     -B build build'
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p out
+          cp build/xiaozhi.bin out/
+          cp build/bootloader/bootloader.bin out/
+          cp build/partition_table/partition-table.bin out/
+          cp build/ota_data_initial.bin out/ 2>/dev/null || true
+          cp build/flasher_args.json out/ 2>/dev/null || true
+          cd out
+          sha256sum * | tee SHA256SUMS
+          ls -la
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: esp-fw-${{ github.run_number }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
