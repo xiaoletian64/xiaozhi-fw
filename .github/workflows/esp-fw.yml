@@ -13,8 +13,6 @@ on:
         default: esp32s3
         type: choice
         options: [esp32s3, esp32c3, esp32c6]
-  push:
-    branches: [main]
 permissions:
   contents: read
 jobs:
