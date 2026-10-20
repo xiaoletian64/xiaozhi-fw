@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       board:
-        description: Board name (dir under main/boards)
+        description: Kconfig BOARD_TYPE symbol (w/o CONFIG_ prefix)
         required: true
-        default: lichuang-dev
+        default: BOARD_TYPE_LICHUANG_DEV_S3
         type: string
       target:
         description: IDF target chip
@@ -29,12 +29,13 @@ jobs:
           TARGET: ${{ inputs.target }}
         run: |
           docker run --rm -v "$PWD:/project" -w /project \
-            -e BOARD="${BOARD:-lichuang-dev}" -e TARGET="${TARGET:-esp32s3}" \
+            -e BOARD="${BOARD:-BOARD_TYPE_LICHUANG_DEV_S3}" -e TARGET="${TARGET:-esp32s3}" \
             espressif/idf:v5.5.2 bash -c '
               set -e
               . $IDF_PATH/export.sh
-              idf.py -DBOARD=$BOARD \
-                     -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.$TARGET" \
+              # xiaozhi 的板子由 Kconfig CONFIG_BOARD_TYPE_* 决定，用 overlay 注入（优先级最高）
+              printf "CONFIG_%s=y\n" "$BOARD" > sdkconfig.board-overlay
+              idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.$TARGET;sdkconfig.board-overlay" \
                      -B build build'
 
       - name: Collect artifacts
