@@ -33,9 +33,11 @@ jobs:
             espressif/idf:v5.5.2 bash -c '
               set -e
               . $IDF_PATH/export.sh
-              # xiaozhi 的板子由 Kconfig CONFIG_BOARD_TYPE_* 决定，用 overlay 注入（优先级最高）
+              # xiaozhi 的板子由 Kconfig CONFIG_BOARD_TYPE_* 决定；板符号 depends on 芯片，
+              # 必须先钉 IDF_TARGET 再注入 overlay，否则符号不可见被静默忽略（踩过：回落 esp32 默认板）
               printf "CONFIG_%s=y\n" "$BOARD" > sdkconfig.board-overlay
-              idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.$TARGET;sdkconfig.board-overlay" \
+              idf.py -DIDF_TARGET=$TARGET \
+                     -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.$TARGET;sdkconfig.board-overlay" \
                      -B build build'
 
       - name: Collect artifacts
