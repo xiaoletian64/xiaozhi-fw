@@ -26,13 +26,17 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Build in official IDF image
+        env:
+          BOARD: ${{ inputs.board }}
+          TARGET: ${{ inputs.target }}
         run: |
           docker run --rm -v "$PWD:/project" -w /project \
+            -e BOARD="${BOARD:-lichuang-dev}" -e TARGET="${TARGET:-esp32s3}" \
             espressif/idf:v5.5.2 bash -c '
               set -e
               . $IDF_PATH/export.sh
-              idf.py -DBOARD=${{ github.event.inputs.board || "lichuang-dev" }} \
-                     -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.${{ github.event.inputs.target || "esp32s3" }}" \
+              idf.py -DBOARD=$BOARD \
+                     -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.$TARGET" \
                      -B build build'
 
       - name: Collect artifacts
